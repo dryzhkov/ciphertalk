@@ -1,7 +1,10 @@
 package controller
 
 import (
+	"ciphertalk/common/constants"
 	"ciphertalk/common/models"
+	"ciphertalk/server/auth"
+	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
@@ -72,6 +75,28 @@ func (ctrl *APIController) HandleWebsockets(w http.ResponseWriter, r *http.Reque
 		log.Printf("Recieved message from: %[1]v\n", msg.SenderID)
 		ctrl.channel <- msg
 	}
+}
+
+// Login accepts client's request and generates a new JWT token for it
+func (ctrl *APIController) Login(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	var loginReq = models.LoginRequest{}
+	err := json.NewDecoder(r.Body).Decode(&loginReq)
+
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if loginReq.UserName == "" {
+		http.Error(w, "Invalid request. Missing user name", http.StatusBadRequest)
+		return
+	}
+
+	response := models.LoginResponse{AuthToken: auth.CreateToken(&loginReq.UserName)}
+	payload, _ := json.Marshal(response)
+	w.Header().Set(constants.HTTPContentType, constants.HTTPApplicationJSON)
+	w.Write([]byte(payload))
 }
 
 func (ctrl *APIController) isValid(msg *models.Message) bool {

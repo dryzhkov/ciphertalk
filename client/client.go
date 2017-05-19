@@ -31,6 +31,10 @@ var timeInterval = flag.Duration("interval", time.Second*3, "send message time i
 func main() {
 	flag.Parse()
 
+	var authToken = login(*addr, *recepientID)
+
+	log.Println("Received auth token:", authToken)
+
 	var wsURL = url.URL{Scheme: "ws", Host: *addr, Path: "/websockets"}
 
 	log.Printf("connecting to %s", wsURL.String())
@@ -49,11 +53,7 @@ func main() {
 
 	go receiveMessages(conn)
 
-	// sendMessages(conn)
-
-	var authToken = login(*addr, *recepientID)
-
-	log.Println("Received auth token:", authToken)
+	sendMessages(conn)
 }
 
 func login(host string, user string) string {

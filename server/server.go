@@ -2,12 +2,15 @@ package server
 
 import (
 	"ciphertalk/common/constants"
+	"ciphertalk/server/auth"
 	"ciphertalk/server/controller"
 	"fmt"
 	"html"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -19,7 +22,7 @@ func Initialize() {
 
 	var port = "3000"
 	log.Println("Server started on port " + port)
-	err := http.ListenAndServe(":"+port, router)
+	err := http.ListenAndServe(":"+port, handlers.LoggingHandler(os.Stdout, router))
 
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
@@ -27,8 +30,12 @@ func Initialize() {
 }
 
 func registerRoutes(router *mux.Router, controller *controller.APIController) {
+	var handleWebsockets = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		controller.HandleWebsockets(w, r)
+	})
+
 	// route for sending and recieving messages
-	router.HandleFunc("/websockets", controller.HandleWebsockets).Methods(constants.HTTPGet)
+	router.Handle("/websockets", auth.JwtMiddleware.Handler(handleWebsockets)).Methods(constants.HTTPGet)
 
 	// authentication route
 	router.HandleFunc("/login", controller.Login).Methods(constants.HTTPPost)
