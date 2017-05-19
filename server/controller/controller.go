@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"ciphertalk/common/models"
 	"log"
 	"net/http"
 	"sync"
@@ -18,14 +19,7 @@ type APIController struct {
 	clients  []client
 	mutex    sync.Mutex
 	upgrader websocket.Upgrader
-	channel  chan message
-}
-
-type message struct {
-	SenderID    string `json:"senderId"`
-	RecipientID string `json:"recepientId"`
-	Body        string `json:"body"`
-	TimeStamp   string `json:"timeStamp"`
+	channel  chan models.Message
 }
 
 // NewAPIController creates new instance of APIController
@@ -37,7 +31,7 @@ func NewAPIController() *APIController {
 		WriteBufferSize: 1024,
 	}
 
-	ctrl.channel = make(chan message)
+	ctrl.channel = make(chan models.Message)
 
 	go ctrl.processMessages()
 
@@ -54,7 +48,7 @@ func (ctrl *APIController) HandleWebsockets(w http.ResponseWriter, r *http.Reque
 	cl := client{socket: socket, id: ""}
 
 	for {
-		var msg message
+		var msg models.Message
 
 		err := socket.ReadJSON(&msg)
 
@@ -64,7 +58,7 @@ func (ctrl *APIController) HandleWebsockets(w http.ResponseWriter, r *http.Reque
 			break
 		}
 
-		if !ctrl.isValid(msg) {
+		if !ctrl.isValid(&msg) {
 			ctrl.removeClient(cl)
 			break
 		}
@@ -80,7 +74,7 @@ func (ctrl *APIController) HandleWebsockets(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func (ctrl *APIController) isValid(msg message) bool {
+func (ctrl *APIController) isValid(msg *models.Message) bool {
 	if msg.RecipientID == "" {
 		log.Printf("Invalid recepient")
 		return false

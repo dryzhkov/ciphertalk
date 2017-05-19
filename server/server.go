@@ -1,6 +1,7 @@
 package server
 
 import (
+	"ciphertalk/common/constants"
 	"ciphertalk/server/controller"
 	"fmt"
 	"html"
@@ -26,7 +27,11 @@ func Initialize() {
 }
 
 func registerRoutes(router *mux.Router, controller *controller.APIController) {
-	router.HandleFunc("/websockets", controller.HandleWebsockets).Methods("GET")
+	// route for sending and recieving messages
+	router.HandleFunc("/websockets", controller.HandleWebsockets).Methods(constants.HTTPGet)
+
+	// authentication route
+	router.HandleFunc("/login", controller.Login).Methods(constants.HTTPPost)
 }
 
 func handleDefault(w http.ResponseWriter, r *http.Request) {

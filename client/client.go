@@ -1,10 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"log"
+	"net/http"
 	"net/url"
 	"time"
+
+	"ciphertalk/common/constants"
+	"ciphertalk/common/models"
 
 	"github.com/gorilla/websocket"
 )
@@ -43,7 +49,40 @@ func main() {
 
 	go receiveMessages(conn)
 
-	sendMessages(conn)
+	// sendMessages(conn)
+
+	var authToken = login(*addr, *recepientID)
+
+	log.Println("Received auth token:", authToken)
+}
+
+func login(host string, user string) string {
+	var httpURL = url.URL{Scheme: "http", Host: host, Path: "/login"}
+	var loginReq = models.LoginRequest{UserName: user}
+	var bodyStr, err = json.Marshal(loginReq)
+
+	if err != nil {
+		log.Fatal("unable to convert JSON object to payload")
+	}
+	var payload = []byte(bodyStr)
+	req, err := http.NewRequest(constants.HTTPPost, httpURL.String(), bytes.NewBuffer(payload))
+
+	req.Header.Set(constants.HTTPContentType, constants.HTTPApplicationJSON)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal("error happened while sending request:", err)
+	}
+	defer resp.Body.Close()
+
+	var loginRes = models.LoginResponse{}
+	err = json.NewDecoder(resp.Body).Decode(&loginRes)
+
+	if err != nil {
+		log.Fatal("unable to parse response from the server")
+	}
+	return loginRes.AuthToken
 }
 
 func sendMessages(conn *websocket.Conn) {
