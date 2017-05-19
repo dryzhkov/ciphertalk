@@ -39,7 +39,11 @@ func main() {
 
 	log.Printf("connecting to %s", wsURL.String())
 
-	conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), nil)
+	headers := http.Header{
+		"Authorization": {"Bearer " + authToken},
+	}
+
+	conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), headers)
 
 	if err != nil {
 		log.Fatal("unable to connect:", err)
