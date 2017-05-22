@@ -1,8 +1,11 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"time"
+
+	"strings"
 
 	"github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
@@ -22,9 +25,9 @@ var JwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 })
 
 // User Database maps user name to id
-var userDB = map[string]int{
-	"foo": 1,
-	"bar": 2,
+var userDB = map[string]string{
+	"foo": "1",
+	"bar": "2",
 }
 
 func CreateToken(userName *string) string {
@@ -53,9 +56,16 @@ type UserProfile struct {
 	UserID    string
 }
 
-func parseToken(tokenVal string) UserProfile {
+func ParseToken(authHeader string) (UserProfile, error) {
+	// assuming the auth header is in the format of "Bearer <token>", we only need the token value
+	pieces := strings.Split(authHeader, " ")
+
+	var userProfile = UserProfile{}
+	if len(pieces) < 2 {
+		return userProfile, errors.New("invalid authorization header")
+	}
+	tokenVal := pieces[1]
 	token, err := jwt.Parse(tokenVal, func(token *jwt.Token) (interface{}, error) {
-		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
@@ -63,12 +73,13 @@ func parseToken(tokenVal string) UserProfile {
 		return appSecret, nil
 	})
 
-	var userProfile = UserProfile{}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		fmt.Println(claims["foo"], claims["nbf"])
-	} else {
-		fmt.Println(err)
+		userProfile.AuthToken = tokenVal
+		userProfile.UserID = claims["id"].(string)
+		userProfile.UserName = claims["name"].(string)
+
+		return userProfile, nil
 	}
 
-	return userProfile
+	return userProfile, err
 }

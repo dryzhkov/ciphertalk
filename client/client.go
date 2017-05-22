@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -31,16 +32,14 @@ var timeInterval = flag.Duration("interval", time.Second*3, "send message time i
 func main() {
 	flag.Parse()
 
-	var authToken = login(*addr, *recepientID)
-
-	log.Println("Received auth token:", authToken)
+	var authToken = login(*addr, *senderID)
 
 	var wsURL = url.URL{Scheme: "ws", Host: *addr, Path: "/websockets"}
 
 	log.Printf("connecting to %s", wsURL.String())
 
 	headers := http.Header{
-		"Authorization": {"Bearer " + authToken},
+		constants.HTTPAuthorization: {fmt.Sprintf("Bearer %v", authToken)},
 	}
 
 	conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), headers)

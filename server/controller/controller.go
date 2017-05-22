@@ -48,7 +48,15 @@ func (ctrl *APIController) HandleWebsockets(w http.ResponseWriter, r *http.Reque
 		log.Fatal(err)
 	}
 
-	cl := client{socket: socket, id: ""}
+	authHeader := r.Header.Get(constants.HTTPAuthorization)
+	user, err := auth.ParseToken(authHeader)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cl := client{socket: socket, id: user.UserName}
+	ctrl.addClient(cl)
 
 	for {
 		var msg models.Message
@@ -64,12 +72,6 @@ func (ctrl *APIController) HandleWebsockets(w http.ResponseWriter, r *http.Reque
 		if !ctrl.isValid(&msg) {
 			ctrl.removeClient(cl)
 			break
-		}
-
-		if cl.id == "" {
-			// first message from this client
-			cl.id = msg.SenderID
-			ctrl.addClient(cl)
 		}
 
 		log.Printf("Recieved message from: %[1]v\n", msg.SenderID)
