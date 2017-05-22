@@ -4,8 +4,6 @@ import (
 	"ciphertalk/common/constants"
 	"ciphertalk/server/auth"
 	"ciphertalk/server/controller"
-	"fmt"
-	"html"
 	"log"
 	"net/http"
 	"os"
@@ -39,8 +37,4 @@ func registerRoutes(router *mux.Router, controller *controller.APIController) {
 
 	// authentication route
 	router.HandleFunc("/login", controller.Login).Methods(constants.HTTPPost)
-}
-
-func handleDefault(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello, From CipherTalk!. Your path is %q", html.EscapeString(r.URL.Path))
 }
