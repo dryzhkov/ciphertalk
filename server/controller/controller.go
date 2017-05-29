@@ -74,7 +74,8 @@ func (ctrl *APIController) HandleWebsockets(w http.ResponseWriter, r *http.Reque
 			break
 		}
 
-		log.Printf("Recieved message from: %[1]v\n", msg.SenderID)
+		// log.Printf("Recieved message from: %[1]v\n", msg.SenderID)
+		log.Printf("Verbose Logging\nRecieved message from: %[1]v\nSending to: %[2]v\nContent to: %[3]v\n", msg.SenderID, msg.SenderID, msg.Body)
 		ctrl.channel <- msg
 	}
 }
@@ -95,7 +96,48 @@ func (ctrl *APIController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(loginReq.PublicKey) == 0 {
+		http.Error(w, "Invalid request. Missing public key", http.StatusBadRequest)
+		return
+	}
+
+	log.Println("receieved: ", loginReq)
+
 	response := models.LoginResponse{AuthToken: auth.CreateToken(&loginReq.UserName)}
+	payload, _ := json.Marshal(response)
+
+	// register client in our db
+	auth.RegisterClient(loginReq.UserName, loginReq.PublicKey)
+
+	w.Header().Set(constants.HTTPContentType, constants.HTTPApplicationJSON)
+	w.Write([]byte(payload))
+}
+
+// SecureChannel looks up client by user name and returns its public key if this client has been registered, otherwise return 404
+func (ctrl *APIController) SecureChannel(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	var chReq = models.ChannelRequest{}
+	var err = json.NewDecoder(r.Body).Decode(&chReq)
+
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if chReq.UserName == "" {
+		http.Error(w, "Invalid request. Missing user name", http.StatusBadRequest)
+		return
+	}
+
+	var targetPubKey [32]byte
+	targetPubKey, err = auth.RetrieveClient(chReq.UserName)
+
+	if err != nil {
+		http.Error(w, "Client "+chReq.UserName+" has not been registered", http.StatusNotFound)
+		return
+	}
+
+	response := models.ChannelResponse{PublicKey: targetPubKey}
 	payload, _ := json.Marshal(response)
 	w.Header().Set(constants.HTTPContentType, constants.HTTPApplicationJSON)
 	w.Write([]byte(payload))

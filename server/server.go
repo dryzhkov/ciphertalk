@@ -32,9 +32,16 @@ func registerRoutes(router *mux.Router, controller *controller.APIController) {
 		controller.HandleWebsockets(w, r)
 	})
 
+	var handleSecureChannels = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		controller.SecureChannel(w, r)
+	})
+
 	// route for sending and recieving messages
 	router.Handle("/websockets", auth.JwtMiddleware.Handler(handleWebsockets)).Methods(constants.HTTPGet)
 
 	// authentication route
 	router.HandleFunc("/login", controller.Login).Methods(constants.HTTPPost)
+
+	// route for creating channels between users
+	router.Handle("/secure", auth.JwtMiddleware.Handler(handleSecureChannels)).Methods(constants.HTTPPost)
 }

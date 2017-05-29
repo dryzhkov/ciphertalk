@@ -24,11 +24,8 @@ var JwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 	SigningMethod: jwt.SigningMethodHS256,
 })
 
-// User Database maps user name to id
-var userDB = map[string]string{
-	"foo": "1",
-	"bar": "2",
-}
+// list of available chat clients. Map of username (string) to public key (32 bytes)
+var registeredClients = make(map[string][32]byte)
 
 func CreateToken(userName *string) string {
 	// Create new auth token
@@ -37,11 +34,6 @@ func CreateToken(userName *string) string {
 	// Set token claims
 	claims := token.Claims.(jwt.MapClaims)
 	claims["name"] = userName
-
-	if userID, ok := userDB[*userName]; ok {
-		claims["id"] = userID
-	}
-
 	claims["expires"] = time.Now().Add(time.Hour * tokenExpiration).Unix()
 
 	// Sign the token with our secret
@@ -53,7 +45,6 @@ func CreateToken(userName *string) string {
 type UserProfile struct {
 	AuthToken string
 	UserName  string
-	UserID    string
 }
 
 func ParseToken(authHeader string) (UserProfile, error) {
@@ -75,11 +66,23 @@ func ParseToken(authHeader string) (UserProfile, error) {
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		userProfile.AuthToken = tokenVal
-		userProfile.UserID = claims["id"].(string)
 		userProfile.UserName = claims["name"].(string)
 
 		return userProfile, nil
 	}
 
 	return userProfile, err
+}
+
+func RegisterClient(userName string, pubKey [32]byte) {
+	registeredClients[userName] = pubKey
+}
+
+func RetrieveClient(userName string) ([32]byte, error) {
+	var res [32]byte
+	if res, ok := registeredClients[userName]; ok {
+		return res, nil
+	}
+
+	return res, errors.New("entry not found for key " + userName)
 }
