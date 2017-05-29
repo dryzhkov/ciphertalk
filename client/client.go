@@ -22,14 +22,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type message struct {
-	SenderID    string   `json:"senderId"`
-	RecipientID string   `json:"recepientId"`
-	Body        []byte   `json:"body"`
-	TimeStamp   string   `json:"timeStamp"`
-	MsgNonce    [24]byte `json:"msgNonce"`
-}
-
 type keys struct {
 	publicKey  [32]byte
 	privateKey [32]byte
@@ -48,37 +40,22 @@ func main() {
 	// generate a new public/private key pair
 	myKeys = generateKeys()
 
-	var authToken = login(*addr, *senderID, &myKeys)
+	// get auth token
+	authToken := login(*addr, *senderID, &myKeys)
 
+	// get recepient's public key (create secure channel)
 	recepientPubKey, err := getRecipientKey(*addr, authToken, *recepientID)
 
 	for err != nil {
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("User with name [" + *recepientID + "] has not registered yet. Register the user first and press enter continue...")
+		fmt.Print("User with name [" + *recepientID + "] has not registered yet. Register the user first and press enter to continue...")
 		reader.ReadString('\n')
 		recepientPubKey, err = getRecipientKey(*addr, authToken, *recepientID)
 	}
 
 	log.Println("recepient pub key ", recepientPubKey)
 
-	var wsURL = url.URL{Scheme: "ws", Host: *addr, Path: "/websockets"}
-
-	log.Printf("connecting to %s", wsURL.String())
-
-	headers := http.Header{
-		constants.HTTPAuthorization: {fmt.Sprintf("Bearer %v", authToken)},
-	}
-
-	conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), headers)
-
-	if err != nil {
-		log.Fatal("unable to connect:", err)
-	}
-
-	if resp.StatusCode != 101 {
-		log.Println("server responded with :", resp.StatusCode)
-	}
-
+	conn := openWebsocket(&authToken)
 	defer conn.Close()
 
 	if !*listenOnly {
@@ -86,6 +63,27 @@ func main() {
 	}
 
 	receiveMessages(conn, &recepientPubKey)
+}
+
+func openWebsocket(authToken *string) *websocket.Conn {
+	wsURL := url.URL{Scheme: "ws", Host: *addr, Path: "/websockets"}
+	headers := http.Header{
+		constants.HTTPAuthorization: {fmt.Sprintf("Bearer %v", *authToken)},
+	}
+
+	log.Printf("connecting to %s", wsURL.String())
+
+	conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), headers)
+
+	if err != nil {
+		log.Fatal("unable to connect via websocket:", err)
+	}
+
+	if resp.StatusCode != 101 {
+		log.Println("server responded with :", resp.StatusCode)
+	}
+
+	return conn
 }
 
 func login(host string, user string, k *keys) string {
@@ -174,7 +172,7 @@ func receiveMessages(conn *websocket.Conn, recepientKey *[32]byte) {
 	defer conn.Close()
 
 	for {
-		var msg message
+		var msg models.Message
 		err := conn.ReadJSON(&msg)
 
 		if err != nil {
@@ -196,13 +194,13 @@ func generateKeys() keys {
 	return keys{publicKey: *pubKey, privateKey: *priKey}
 }
 
-func encrypt(msgBytes *[]byte, myKeys *keys, recepientKey *[32]byte, timeStamp string) message {
+func encrypt(msgBytes *[]byte, myKeys *keys, recepientKey *[32]byte, timeStamp string) models.Message {
 	var out []byte
 	var nonce [24]byte
 	randomizeNonce(&nonce)
 	encryptedBytes := box.Seal(out, *msgBytes, &nonce, recepientKey, &myKeys.privateKey)
 
-	return message{
+	return models.Message{
 		SenderID:    *senderID,
 		RecipientID: *recepientID,
 		Body:        encryptedBytes,
@@ -211,7 +209,7 @@ func encrypt(msgBytes *[]byte, myKeys *keys, recepientKey *[32]byte, timeStamp s
 	}
 }
 
-func decryptAndPrint(msg message, myKeys *keys, recepientKey *[32]byte) {
+func decryptAndPrint(msg models.Message, myKeys *keys, recepientKey *[32]byte) {
 	var out []byte
 	decryptedBytes, success := box.Open(out, msg.Body, &msg.MsgNonce, recepientKey, &myKeys.privateKey)
 

@@ -4,7 +4,7 @@ package models
 type Message struct {
 	SenderID    string   `json:"senderId"`
 	RecipientID string   `json:"recepientId"`
-	Body        string   `json:"body"`
+	Body        []byte   `json:"body"`
 	TimeStamp   string   `json:"timeStamp"`
 	MsgNonce    [24]byte `json:"msgNonce"`
 }

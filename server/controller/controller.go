@@ -75,7 +75,7 @@ func (ctrl *APIController) HandleWebsockets(w http.ResponseWriter, r *http.Reque
 		}
 
 		// log.Printf("Recieved message from: %[1]v\n", msg.SenderID)
-		log.Printf("Verbose Logging\nRecieved message from: %[1]v\nSending to: %[2]v\nContent to: %[3]v\n", msg.SenderID, msg.SenderID, msg.Body)
+		log.Printf("Verbose Logging\nRecieved message from: %[1]v\nSending to: %[2]v\nContent: %[3]v\n", msg.SenderID, msg.RecipientID, string(msg.Body[:len(msg.Body)]))
 		ctrl.channel <- msg
 	}
 }
@@ -100,8 +100,6 @@ func (ctrl *APIController) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request. Missing public key", http.StatusBadRequest)
 		return
 	}
-
-	log.Println("receieved: ", loginReq)
 
 	response := models.LoginResponse{AuthToken: auth.CreateToken(&loginReq.UserName)}
 	payload, _ := json.Marshal(response)
@@ -154,7 +152,7 @@ func (ctrl *APIController) isValid(msg *models.Message) bool {
 		return false
 	}
 
-	if msg.Body == "" {
+	if len(msg.Body) == 0 {
 		log.Printf("Invalid message body")
 		return false
 	}
