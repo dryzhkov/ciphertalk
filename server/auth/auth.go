@@ -64,6 +64,10 @@ func ParseToken(authHeader string) (UserProfile, error) {
 		return appSecret, nil
 	})
 
+	if err != nil {
+		return userProfile, err
+	}
+
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		userProfile.AuthToken = tokenVal
 		userProfile.UserName = claims["name"].(string)

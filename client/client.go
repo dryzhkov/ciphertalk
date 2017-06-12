@@ -79,7 +79,7 @@ func openWebsocket(authToken *string) *websocket.Conn {
 		log.Fatal("unable to connect via websocket:", err)
 	}
 
-	if resp.StatusCode != 101 {
+	if resp.StatusCode != http.StatusSwitchingProtocols {
 		log.Println("server responded with :", resp.StatusCode)
 	}
 
