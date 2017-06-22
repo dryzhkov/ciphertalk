@@ -4,3 +4,5 @@ go:
   - 1.7.x
 
 sudo: false
+
+go_import_path: github.com/dryzhkov/ciphertalk
